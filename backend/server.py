@@ -390,6 +390,78 @@ async def proxy_chat(request: Request):
         raise HTTPException(502, f"上游错误: {e}")
 
 
+# ==================== Bot 专用 API（限 localhost 或已认证） ====================
+
+_bot_stats = {"started_at": datetime.now().isoformat(), "messages_processed": 0, "codes_generated": 0, "errors": 0}
+_bot_config = {"duration_minutes": 300, "reply_template": ""}
+
+class BotCreate(BaseModel):
+    duration_minutes: int = Field(default=300, ge=30, le=480)
+
+class BotConfigUpdate(BaseModel):
+    duration_minutes: int = None
+    reply_template: str = None
+
+def _check_localhost(request: Request):
+    """只允许本机调用"""
+    host = request.client.host if request.client else ''
+    if host not in ('127.0.0.1', '::1', 'localhost'):
+        raise HTTPException(403, "仅限服务器本地调用")
+
+@app.get("/api/bot/status")
+async def bot_status(_local = Depends(_check_localhost)):
+    return _bot_stats
+
+@app.get("/api/bot/config")
+async def bot_config(_local = Depends(_check_localhost)):
+    return _bot_config
+
+@app.put("/api/bot/config")
+async def bot_config_update(data: BotConfigUpdate, _local = Depends(_check_localhost)):
+    if data.duration_minutes is not None:
+        _bot_config["duration_minutes"] = data.duration_minutes
+    if data.reply_template is not None:
+        _bot_config["reply_template"] = data.reply_template
+    return {"ok": True, "config": _bot_config}
+
+@app.post("/api/bot/create-code")
+async def bot_create_code(data: BotCreate, request: Request):
+    """Bot 专用：生成+激活一步完成，限本机调用"""
+    _check_localhost(request)
+
+    try:
+        dur = data.duration_minutes
+        h, m = dur // 60, dur % 60
+        dur_str = f"{h}小时" if m==0 else f"{h}小时{m}分钟" if h>0 else f"{m}分钟"
+        result = create_session(dur, price_per_hour=0.6, price_per_request=0.002, notes="Bot自动生成")
+        info = activate_session(result['activation_code'])
+    except ValueError as e:
+        _bot_stats["errors"] += 1
+        raise HTTPException(503, f"系统繁忙: {e}")
+
+    _bot_stats["codes_generated"] += 1
+    _bot_stats["messages_processed"] += 1
+
+    domain = get_plan().get('public_domain','') or '1.14.105.111'
+    return {
+        "activation_code": result['activation_code'],
+        "duration": dur_str,
+        "portal_url": f"http://{domain}/portal",
+        "direct_url": f"http://{domain}/portal?code={result['activation_code']}",
+        "base_url": f"http://{domain}/v1",
+        "api_key": info.get('session_key'),
+        "models": get_all_models(),
+        "reply_text": (_bot_config["reply_template"]
+            .replace("{code}", result['activation_code'])
+            .replace("{duration}", dur_str)
+            .replace("{portal_url}", f"http://{domain}/portal")
+            .replace("{direct_url}", f"http://{domain}/portal?code={result['activation_code']}")
+            .replace("{base_url}", f"http://{domain}/v1")
+            if _bot_config["reply_template"] else
+            f"感谢下单！🎉\n\n激活码：{result['activation_code']}\n自助页：http://{domain}/portal\n\n👉 点击直达：http://{domain}/portal?code={result['activation_code']}\n   (自动激活，拿到 Base URL + API Key 就能用)\n\n⏰ {dur_str}，计时从激活开始\n🤖 可用模型：tc-code-latest / glm-5 / kimi-k2.5 / minimax-m2.5\n🔌 支持 Cursor / CodeBuddy / Claude Code\n\n有问题随时问我～"),
+    }
+
+
 @app.get("/api/health")
 async def health():
     return {"status":"ok","time":datetime.now().isoformat()}
