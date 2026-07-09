@@ -358,9 +358,9 @@ async def proxy_chat(request: Request):
     }
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
-            if body.get("stream"):
-                async def stream():
+        if body.get("stream"):
+            async def stream():
+                async with httpx.AsyncClient(timeout=120) as client:
                     try:
                         async with client.stream("POST",
                             upstream_url,
@@ -370,9 +370,10 @@ async def proxy_chat(request: Request):
                                 yield chunk
                     except httpx.HTTPError as e:
                         yield f'data: {{"error": {{"message": "stream error: {e}"}}}}\n\n'.encode()
-                log_call(session['id'], model, est)
-                return StreamingResponse(stream(), media_type="text/event-stream")
-            else:
+            log_call(session['id'], model, est)
+            return StreamingResponse(stream(), media_type="text/event-stream")
+        else:
+            async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(
                     upstream_url,
                     headers=headers, json=body, timeout=120
