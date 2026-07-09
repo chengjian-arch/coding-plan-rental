@@ -1,0 +1,23 @@
+[Unit]
+Description=Coding Plan Xianyu IM Bot
+After=network-online.target coding-plan.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/coding-plan-rental/backend
+Environment="PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright"
+Environment="DISPLAY=:99"
+ExecStartPre=-/usr/bin/killall Xvfb 2>/dev/null
+ExecStartPre=/usr/bin/Xvfb :99 -screen 0 1280x900x24 -ac +extension RANDR &
+ExecStartPre=/bin/sleep 1
+ExecStart=/usr/bin/python3 bot_service.py
+Restart=always
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
