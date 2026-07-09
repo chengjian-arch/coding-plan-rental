@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coding Plan 自助租用</title>
+<style>
+:root {
+  --bg: #f5f7fa; --card: #fff; --text: #1a1a2e; --muted: #6b7280;
+  --border: #e5e7eb; --primary: #2563eb; --plight: #dbeafe;
+  --success: #10b981; --slight: #d1fae5;
+  --warning: #f59e0b; --wlight: #fef3c7;
+  --danger: #ef4444; --dlight: #fee2e2;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 40px 16px;
+}
+.container { width: 100%; max-width: 540px; }
+
+.header { text-align: center; margin-bottom: 28px; }
+.header h1 { font-size: 20px; font-weight: 600; }
+.header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+.card {
+  background: var(--card); border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  padding: 24px; margin-bottom: 16px;
+}
+
+.input-group { display: flex; gap: 8px; }
+.input-group input {
+  flex: 1; padding: 12px 16px; border: 2px solid var(--border); border-radius: 10px;
+  font-size: 18px; font-family: 'SF Mono','Fira Code',monospace; text-align: center;
+  letter-spacing: 2px; text-transform: uppercase;
+}
+.input-group input:focus { outline: none; border-color: var(--primary); }
+.input-group input::placeholder { color: #ccc; letter-spacing: 0; font-size: 14px; font-family: inherit; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 24px; border-radius: 10px; border: none; font-size: 15px; font-weight: 500;
+  cursor: pointer; transition: all .15s; width: 100%;
+}
+.btn-p { background: var(--primary); color: #fff; }
+.btn-p:hover { background: #1d4ed8; }
+.btn-p:disabled { background: #93c5fd; cursor: not-allowed; }
+
+.info-item { margin-bottom: 14px; }
+.info-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .5px; }
+
+.code-block {
+  background: #1a1a2e; color: #10b981; padding: 12px 14px; border-radius: 10px;
+  font-family: 'SF Mono','Fira Code',monospace; font-size: 13px; word-break: break-all;
+  display: flex; align-items: center; gap: 8px; margin: 6px 0;
+}
+.code-block .txt { flex: 1; }
+.copy-btn {
+  background: rgba(255,255,255,.12); color: #fff; border: none; padding: 6px 12px;
+  border-radius: 6px; cursor: pointer; font-size: 11px; white-space: nowrap; flex-shrink: 0;
+  transition: background .15s;
+}
+.copy-btn:hover { background: rgba(255,255,255,.25); }
+.copy-btn.copied { background: var(--success); }
+
+.timer-box {
+  text-align: center; padding: 20px;
+  background: var(--plight); border-radius: 12px; margin: 16px 0;
+}
+.timer-value { font-size: 44px; font-weight: 700; font-family: 'SF Mono',monospace; color: var(--primary); }
+.timer-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.timer-value.expiring { color: var(--danger); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
+.meter { margin: 8px 0; }
+.meter-head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
+.meter-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.meter-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.meter-fill.safe { background: var(--success); }
+.meter-fill.warn { background: var(--warning); }
+.meter-fill.danger { background: var(--danger); }
+
+.models-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0; }
+.model-tag {
+  padding: 6px 10px; background: var(--bg); border-radius: 6px;
+  font-size: 12px; display: flex; justify-content: space-between; align-items: center;
+}
+.model-tag .m-name { font-weight: 500; font-family: 'SF Mono',monospace; font-size: 11px; }
+.model-tag .m-desc { font-size: 10px; color: var(--muted); }
+
+.alert {
+  padding: 12px 16px; border-radius: 10px; font-size: 13px;
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.alert-e { background: var(--dlight); color: #991b1b; }
+.alert-s { background: var(--slight); color: #065f46; }
+.alert-w { background: var(--wlight); color: #92400e; }
+.alert-i { background: var(--plight); color: #1e40af; }
+
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 10px;
+  font-size: 12px; font-weight: 500;
+}
+.badge-active { background: var(--slight); color: #065f46; }
+.badge-expired { background: var(--dlight); color: #991b1b; }
+.badge-pending { background: var(--wlight); color: #92400e; }
+
+.instruction {
+  font-size: 12px; color: var(--muted); line-height: 1.8; margin-top: 12px;
+  padding: 12px; background: var(--bg); border-radius: 8px;
+}
+
+.footer { text-align: center; margin-top: 32px; font-size: 11px; color: var(--muted); }
+
+#step1, #step2 { display: none; }
+#step1.active, #step2.active { display: block; }
+
+@media (max-width: 480px) {
+  .timer-value { font-size: 32px; }
+  .code-block { font-size: 11px; }
+  .models-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Coding Plan 自助租用</h1>
+    <p>输入激活码，获取 API 凭证</p>
+  </div>
+
+  <!-- 步骤1: 输入激活码 -->
+  <div id="step1" class="active">
+    <div class="card">
+      <div class="input-group">
+        <input id="code-input" type="text" placeholder="输入激活码" maxlength="8" autocomplete="off">
+      </div>
+      <button class="btn btn-p" style="margin-top:12px" onclick="activate()" id="activate-btn">
+        激活使用
+      </button>
+      <div id="step1-error" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- 步骤2: 使用中 -->
+  <div id="step2">
+    <div class="card" id="status-card"></div>
+    <div class="card" id="credential-card" style="display:none"></div>
+    <div class="card" id="models-card" style="display:none"></div>
+  </div>
+
+  <div class="footer">
+    激活码由管理员提供 | 有问题请联系客服
+  </div>
+</div>
+
+<script>
+const API = window.location.origin.includes('localhost') ? 'http://localhost:8899' : window.location.origin;
+let currentCode = '';
+let countdownTimer = null;
+let syncTimer = null;
+let sessionData = null;
+
+// HTML 转义
+function esc(s) { const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
+
+// 复制文本到剪贴板（兼容非 HTTPS）
+function copyToClipboard(text, btn) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (btn) { btn.textContent = '已复制'; btn.classList.add('copied'); setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000); }
+    }).catch(() => {
+      _copyFallback(text, btn);
+    });
+  } else {
+    _copyFallback(text, btn);
+  }
+}
+function _copyFallback(text, btn) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.left = '0'; ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (btn) { btn.textContent = ok ? '已复制' : '复制失败'; btn.classList.add(ok ? 'copied' : ''); setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 2000); }
+}
+
+// 回车激活
+document.getElementById('code-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') activate();
+});
+
+async function activate() {
+  const code = document.getElementById('code-input').value.trim();
+  if (!code) return showError('请输入激活码');
+
+  const btn = document.getElementById('activate-btn');
+  btn.disabled = true; btn.textContent = '激活中...';
+
+  try {
+    const r = await fetch(`${API}/api/portal/activate`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code}),
+    });
+
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      showError(e.detail || '激活失败');
+      btn.disabled = false; btn.textContent = '激活使用';
+      return;
+    }
+
+    const data = await r.json();
+    currentCode = code;
+    sessionData = data;
+
+    document.getElementById('step1').classList.remove('active');
+    document.getElementById('step2').classList.add('active');
+
+    // 启动客户端倒计时（每秒更新）
+    startCountdown(data);
+    refreshStatusData(data);
+
+    btn.disabled = false; btn.textContent = '激活使用';
+  } catch(e) {
+    showError('网络错误: ' + e.message);
+    btn.disabled = false; btn.textContent = '激活使用';
+  }
+}
+
+// ===== 客户端倒计时：每秒减去1秒 =====
+function startCountdown(data) {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+
+  let remaining = data.remaining_seconds || 0;
+
+  countdownTimer = setInterval(() => {
+    if (remaining <= 0) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+      renderStatusCard({...sessionData, remaining_seconds: 0, expired: true, status: 'expired'});
+      document.getElementById('credential-card').style.display = 'none';
+      return;
+    }
+    remaining--;
+    renderStatusCard({...sessionData, remaining_seconds: remaining});
+  }, 1000);
+
+  // 每30秒从服务器拉取真实数据（同步 request_count、usage_cost等）
+  syncTimer = setInterval(async () => {
+    if (!currentCode) return;
+    try {
+      const r = await fetch(`${API}/api/portal/status?code=${encodeURIComponent(currentCode)}`);
+      if (r.ok) {
+        const d = await r.json();
+        sessionData = d;
+        // 校正倒计时（以服务器时间为准）
+        remaining = d.remaining_seconds || 0;
+        if (d.expired) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+          renderStatusCard(d);
+          document.getElementById('credential-card').style.display = 'none';
+        }
+      }
+    } catch(e) {}
+  }, 30000);
+}
+
+function refreshStatusData(data) {
+  renderStatusCard(data);
+  if (data.session_key) {
+    renderCredentialCard(data);
+    loadModels();
+  }
+}
+
+// ===== 状态卡片 =====
+function renderStatusCard(data) {
+  const remaining = data.remaining_seconds || 0;
+  const h = Math.floor(remaining / 3600);
+  const m = Math.floor((remaining % 3600) / 60);
+  const s = remaining % 60;
+  const timeStr = h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    : `${m}:${String(s).padStart(2,'0')}`;
+
+  const isExpiring = remaining < 600 && remaining > 0;
+  const pct = data.duration_minutes > 0
+    ? Math.max(0, Math.min(100, (data.elapsed_minutes / data.duration_minutes * 100)))
+    : 0;
+
+  let statusBadge = '';
+  let timerClass = '';
+  if (data.expired || data.status === 'expired') {
+    statusBadge = '<span class="badge badge-expired">已过期</span>';
+    timerClass = ' expiring';
+  } else if (data.status === 'active') {
+    statusBadge = '<span class="badge badge-active">使用中</span>';
+    if (isExpiring) timerClass = ' expiring';
+  } else {
+    statusBadge = '<span class="badge badge-pending">待激活</span>';
+  }
+
+  const elapsedPct = data.duration_minutes > 0
+    ? (data.elapsed_minutes / data.duration_minutes * 100).toFixed(0) : 0;
+
+  document.getElementById('status-card').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div style="font-size:12px;color:var(--muted)">激活码</div>
+        <div style="font-size:16px;font-weight:600;font-family:'SF Mono',monospace">${data.activation_code}</div>
+      </div>
+      ${statusBadge}
+    </div>
+
+    <div class="timer-box">
+      <div class="timer-value${timerClass}">${timeStr}</div>
+      <div class="timer-label">
+        ${data.expired ? '已过期' : '剩余时间'}
+        ${!data.expired ? ` · 到期: ${data.expires_at?.slice(11,16)||''}` : ''}
+      </div>
+    </div>
+
+    <div class="meter">
+      <div class="meter-head"><span>已用时间</span><span>${elapsedPct}%</span></div>
+      <div class="meter-track">
+        <div class="meter-fill ${elapsedPct>90?'danger':elapsedPct>70?'warn':'safe'}" style="width:${elapsedPct}%"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-around;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:600">${data.request_count||0}</div>
+        <div style="font-size:11px;color:var(--muted)">已调用(次)</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:600">¥${data.base_cost||0}</div>
+        <div style="font-size:11px;color:var(--muted)">基础费用</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:600">¥${(data.usage_cost||0).toFixed(4)}</div>
+        <div style="font-size:11px;color:var(--muted)">按次费用</div>
+      </div>
+    </div>
+
+    ${data.expired ? `
+    <div class="alert alert-e" style="margin-top:16px">
+      <span>!</span>
+      <div>租用已过期。激活码和 API Key 均已作废。如需续租请联系管理员。</div>
+    </div>
+    ` : ''}
+  `;
+}
+
+// ===== 凭证卡片 =====
+function renderCredentialCard(data) {
+  document.getElementById('credential-card').style.display = 'block';
+  const apiKey = data.session_key || '';
+  const apiEndpoint = data.api_endpoint || `${window.location.origin}/v1/chat/completions`;
+  const baseUrl = apiEndpoint.replace('/chat/completions', '');
+
+  document.getElementById('credential-card').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">API 凭证</div>
+
+    <div class="info-item">
+      <div class="info-label">Base URL</div>
+      <div class="code-block">
+        <span class="txt">${baseUrl}</span>
+        <button class="copy-btn" data-copy="${baseUrl.replace(/"/g,'&quot;')}">复制</button>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-label">API Key</div>
+      <div class="code-block" style="color:#f59e0b">
+        <span class="txt">${apiKey}</span>
+        <button class="copy-btn" data-copy="${apiKey.replace(/"/g,'&quot;')}">复制</button>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-label">计费</div>
+      <div style="font-size:13px;color:var(--muted)">
+        基础 ¥${data.price_per_hour}/小时 + ¥${data.price_per_request}/次调用
+      </div>
+    </div>
+
+    <div class="instruction">
+      <strong>使用说明：</strong><br>
+      1. 分别复制 Base URL 和 API Key<br>
+      2. 在 CodeBuddy / Cursor / Claude Code 中填入<br>
+      3. 模型名称见下方「可用模型」<br>
+      4. 租用到期后 API Key 自动作废
+    </div>
+  `;
+
+  // 绑定复制事件
+  bindCopyButtons();
+}
+
+// ===== 模型列表 =====
+async function loadModels() {
+  try {
+    const r = await fetch(`${API}/api/portal/models`);
+    if (!r.ok) { console.error('loadModels HTTP', r.status); return; }
+    const data = await r.json();
+    if (!data.models || data.models.length === 0) {
+      document.getElementById('models-card').style.display = 'block';
+      document.getElementById('models-card').innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:16px">暂无可用模型，请联系管理员配置。</div>';
+      return;
+    }
+    document.getElementById('models-card').style.display = 'block';
+
+    // 按供应商分组
+    const groups = {};
+    data.models.forEach(m => {
+      const provider = m.provider || '其他';
+      if (!groups[provider]) groups[provider] = [];
+      groups[provider].push(m);
+    });
+
+    const groupsHtml = Object.entries(groups).map(([provider, models]) => `
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500">${esc(provider)}</div>
+        <div class="models-grid">
+          ${models.map(m => `
+            <div class="model-tag">
+              <span class="m-name">${esc(m.id)}</span>
+              <span class="m-desc">${esc(m.name)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('models-card').innerHTML = `
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">可用模型 (${data.models.length} 个)</div>
+      ${groupsHtml}
+      <div class="alert alert-i" style="margin-top:10px">
+        <span>i</span>
+        <div>在 AI 工具中填入上方 Base URL 和 API Key，选择对应的模型名称即可使用。</div>
+      </div>
+    `;
+  } catch(e) {}
+}
+
+// ===== 复制按钮 =====
+function bindCopyButtons() {
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const text = this.getAttribute('data-copy');
+      if (!text) return;
+      copyToClipboard(text, this);
+    });
+  });
+}
+
+// ===== 错误显示 =====
+function showError(msg) {
+  document.getElementById('step1-error').innerHTML = `
+    <div class="alert alert-e"><span>!</span><div>${msg}</div></div>
+  `;
+  setTimeout(() => {
+    document.getElementById('step1-error').innerHTML = '';
+  }, 5000);
+}
+
+// URL参数自动激活
+const urlParams = new URLSearchParams(window.location.search);
+const codeFromUrl = urlParams.get('code');
+if (codeFromUrl) {
+  document.getElementById('code-input').value = codeFromUrl;
+  activate();
+}
+</script>
+</body>
+</html>

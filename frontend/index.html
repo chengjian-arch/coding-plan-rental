@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coding Plan 管理后台</title>
+<style>
+:root {
+  --bg: #f5f7fa; --card: #fff; --text: #1a1a2e; --muted: #6b7280;
+  --border: #e5e7eb; --p: #2563eb; --pl: #dbeafe;
+  --s: #10b981; --sl: #d1fae5;
+  --w: #f59e0b; --wl: #fef3c7;
+  --d: #ef4444; --dl: #fee2e2;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg); color: var(--text); line-height:1.6;
+}
+
+/* ===== 登录 ===== */
+.login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+.login-box { background: var(--card); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.2); padding: 40px; width: 100%; max-width: 360px; }
+.login-box .logo { text-align: center; font-size: 22px; font-weight: 700; color: var(--p); margin-bottom: 6px; }
+.login-box .sub { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+.login-fld { margin-bottom: 16px; }
+.login-fld label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 5px; }
+.login-fld input {
+  width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px;
+}
+.login-fld input:focus { outline: none; border-color: var(--p); box-shadow: 0 0 0 3px var(--pl); }
+
+/* ===== Layout ===== */
+.app { display:flex; min-height:100vh; }
+.sidebar {
+  width: 210px; background: var(--card); border-right:1px solid var(--border);
+  padding: 0; position:fixed; top:0; left:0; bottom:0; z-index:100;
+  display:flex; flex-direction:column;
+}
+.sidebar .logo { padding: 14px 18px; border-bottom:1px solid var(--border); font-size:15px; font-weight:600; color:var(--p); }
+.nav { padding:8px 0; flex:1; }
+.nav a {
+  display:flex; align-items:center; gap:8px; padding:9px 18px;
+  cursor:pointer; font-size:13px; color:var(--muted); border-left:3px solid transparent;
+  text-decoration:none; transition:all .12s;
+}
+.nav a:hover, .nav a.active { background:var(--pl); color:var(--p); }
+.nav a.active { border-left-color:var(--p); font-weight:600; }
+.nav a.logout { color:var(--d); }
+.nav a.logout:hover { background:var(--dl); }
+.sidebar-info { padding: 12px 18px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+.status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
+.status-dot.on { background: var(--s); box-shadow: 0 0 6px var(--s); }
+.status-dot.off { background: var(--border); }
+
+.main { margin-left:210px; flex:1; padding:22px 30px; }
+.page { display:none; }
+.page.active { display:block; }
+h1 { font-size:20px; font-weight:600; margin-bottom:3px; }
+h1+p, .page>p { color:var(--muted); font-size:12px; margin-bottom:18px; }
+
+.card { background:var(--card); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); padding:18px; margin-bottom:14px; }
+.card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.card-head h3 { font-size:14px; font-weight:600; }
+
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+
+.stat { background:var(--card); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.06); padding:16px; }
+.stat-l { font-size:11px; color:var(--muted); }
+.stat-v { font-size:24px; font-weight:600; margin:4px 0; }
+.stat-s { font-size:11px; color:var(--muted); }
+
+.btn { display:inline-flex; align-items:center; gap:4px; padding:7px 14px; border-radius:8px; border:none; font-size:13px; font-weight:500; cursor:pointer; text-decoration:none; transition:all .12s; }
+.btn-p { background:var(--p); color:#fff; } .btn-p:hover { background:#1d4ed8; }
+.btn-s { background:var(--s); color:#fff; } .btn-s:hover { background:#059669; }
+.btn-w { background:var(--w); color:#fff; } .btn-w:hover { background:#d97706; }
+.btn-d { background:var(--d); color:#fff; } .btn-d:hover { background:#dc2626; }
+.btn-o { background:transparent; border:1px solid var(--border); color:var(--text); }
+.btn-o:hover { background:var(--bg); }
+.btn-sm { padding:4px 10px; font-size:12px; }
+.btn-xs { padding:3px 8px; font-size:11px; }
+.btn-block { width:100%; justify-content:center; }
+
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th { font-weight:600; background:var(--bg); color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.3px; }
+th,td { padding:7px 10px; text-align:left; border-bottom:1px solid var(--border); }
+tr:hover { background:#fafbfc; }
+.tr { text-align:right; } .tc { text-align:center; }
+.mono { font-family:'SF Mono',monospace; font-size:11px; }
+
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:500; }
+.badge-s { background:var(--sl); color:#065f46; }
+.badge-w { background:var(--wl); color:#92400e; }
+.badge-d { background:var(--dl); color:#991b1b; }
+.badge-i { background:var(--pl); color:#1e40af; }
+
+.meter { margin:6px 0; }
+.meter-h { display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px; }
+.meter-t { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.meter-f { height:100%; border-radius:3px; transition:width .4s; }
+.meter-f.safe { background:var(--s); }
+.meter-f.warn { background:var(--w); }
+.meter-f.danger { background:var(--d); }
+
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:999; display:flex; align-items:center; justify-content:center; }
+.modal { background:var(--card); border-radius:14px; padding:24px; width:90%; max-width:460px; max-height:85vh; overflow-y:auto; }
+.modal h3 { font-size:15px; font-weight:600; margin-bottom:14px; }
+
+.form { margin-bottom:12px; }
+.form label { display:block; font-size:11px; font-weight:500; color:var(--muted); margin-bottom:3px; }
+.form input,.form select { width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px; }
+.form input:focus { outline:none; border-color:var(--p); box-shadow:0 0 0 3px var(--pl); }
+.form-hint { font-size:10px; color:var(--muted); margin-top:2px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+.code-box { text-align:center; padding:24px; background:var(--pl); border-radius:12px; margin:12px 0; }
+.code-box .code { font-size:38px; font-weight:700; font-family:'SF Mono',monospace; color:var(--p); letter-spacing:4px; margin:8px 0; }
+.code-box .info { font-size:12px; color:var(--muted); }
+
+.copy-highlight { background:#1a1a2e; color:#10b981; padding:12px 14px; border-radius:8px; font-family:'SF Mono',monospace; font-size:12px; margin:8px 0; display:flex; align-items:center; gap:8px; }
+.copy-highlight .txt { flex:1; word-break:break-all; white-space:pre-wrap; }
+
+.toast { position:fixed; top:14px; right:14px; z-index:2000; padding:9px 18px; border-radius:8px; color:#fff; font-size:13px; animation:slide .3s; box-shadow:0 4px 12px rgba(0,0,0,.15); }
+.toast-s { background:var(--s); } .toast-e { background:var(--d); } .toast-w { background:var(--w); }
+@keyframes slide { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+.alert { padding:10px 14px; border-radius:8px; margin-bottom:10px; font-size:12px; display:flex; gap:8px; align-items:flex-start; }
+.alert-e { background:var(--dl); color:#991b1b; }
+.alert-w { background:var(--wl); color:#92400e; }
+.alert-i { background:var(--pl); color:#1e40af; }
+.alert-s { background:var(--sl); color:#065f46; }
+
+.quick-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.quick-btn {
+  padding: 8px 14px; background:var(--card); border:1px solid var(--border); border-radius:10px;
+  cursor:pointer; font-size:13px; transition:all .12s; text-align:center; flex:1; min-width:120px;
+}
+.quick-btn:hover { border-color:var(--p); background:var(--pl); }
+.quick-btn .label { font-size:11px; color:var(--muted); margin-bottom:2px; }
+.quick-btn .val { font-weight:600; font-size:14px; }
+.quick-btn.active { border-color:var(--p); background:var(--pl); }
+
+.session-active-card {
+  border:2px solid var(--s); border-radius:12px; padding:16px; margin-bottom:12px;
+  background: var(--sl);
+}
+.session-active-card .title { font-weight:600; color:#065f46; margin-bottom:6px; }
+
+@media(max-width:768px){
+  .sidebar{width:50px}
+  .sidebar .logo,.sidebar .sidebar-info,.nav a span,.nav a small{display:none}
+  .main{margin-left:50px;padding:14px}
+  .grid2,.grid3,.grid4{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="login-overlay" id="login-screen" style="display:none">
+    <div class="login-box">
+      <div class="logo">CP Admin</div>
+      <div class="sub">Coding Plan 管理后台</div>
+      <div class="login-fld"><label>账号</label><input id="login-user" type="text" placeholder="请输入账号" autocomplete="username"></div>
+      <div class="login-fld"><label>密码</label><input id="login-pass" type="password" placeholder="请输入密码" autocomplete="current-password"></div>
+      <button class="btn btn-p btn-block" onclick="doLogin()" id="login-btn">登 录</button>
+      <div id="login-error" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="logo">CP Admin</div>
+    <nav class="nav">
+      <a class="nav-link active" data-p="dash">◉ <span>控制台</span></a>
+      <a class="nav-link" data-p="code">▶ <span>生成码</span></a>
+      <a class="nav-link" data-p="sessions">☰ <span>租用记录</span></a>
+      <a class="nav-link" data-p="tenants">◎ <span>用户</span></a>
+      <a class="nav-link" data-p="config">⚙ <span>设置</span></a>
+      <a class="nav-link logout" onclick="doLogout()">↩ <span>退出</span></a>
+    </nav>
+    <div class="sidebar-info">
+      <span class="status-dot off" id="status-dot"></span>
+      <span id="sidebar-status">连接中...</span><br>
+      <span id="sidebar-version">v3.2</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page active" id="pg-dash">
+      <h1>控制台</h1>
+      <p>实时概览 · 每15秒自动刷新</p>
+      <div class="grid4" id="dash-stats"></div>
+      <div class="grid2">
+        <div class="card" id="dash-active"></div>
+        <div class="card" id="dash-usage"></div>
+      </div>
+      <div class="card" id="dash-recent"></div>
+    </div>
+
+    <div class="page" id="pg-code">
+      <h1>生成激活码</h1>
+      <p>生成后发给顾客，顾客在自助页输入即可使用</p>
+      <div class="card" id="code-form"></div>
+      <div class="card" id="code-result" style="display:none"></div>
+    </div>
+
+    <div class="page" id="pg-sessions">
+      <h1>租用记录</h1>
+      <p>全部历史会话</p>
+      <div class="card" id="sessions-table"></div>
+    </div>
+
+    <div class="page" id="pg-tenants">
+      <h1>用户管理</h1>
+      <p>关联顾客信息（可选，用于统计）</p>
+      <button class="btn btn-p btn-sm" onclick="showAddTenant()" style="margin-bottom:12px">+ 添加用户</button>
+      <div class="card" id="tenants-table"></div>
+    </div>
+
+    <div class="page" id="pg-config">
+      <h1>系统设置</h1>
+      <p>API 凭证 · 定价 · 安全规则</p>
+      <div class="card" id="config-form"></div>
+    </div>
+  </main>
+</div>
+
+<div id="modals"></div>
+<div id="toasts"></div>
+
+<script>
+// ===== 全局状态 =====
+const API = window.location.origin.includes('localhost') ? 'http://localhost:8899' : window.location.origin;
+let currentPage = 'dash';
+let authToken = localStorage.getItem('cp_admin_token') || '';
+let autoTimer = null;
+
+// ===== 登录 =====
+function checkLogin() {
+  if (authToken) {
+    document.getElementById('login-screen').style.display = 'none';
+    return true;
+  }
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-user').focus();
+  return false;
+}
+
+async function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value.trim();
+  if (!u || !p) return showLoginError('请输入账号和密码');
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = '登录中...';
+
+  try {
+    const r = await fetch(API + '/api/admin/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username:u, password:p}),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      showLoginError(e.detail || '登录失败');
+      btn.disabled = false; btn.textContent = '登 录';
+      return;
+    }
+    const d = await r.json();
+    authToken = d.token;
+    localStorage.setItem('cp_admin_token', authToken);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('login-pass').value = '';
+    initAfterLogin();
+  } catch(e) {
+    showLoginError('网络错误: ' + e.message);
+    btn.disabled = false; btn.textContent = '登 录';
+  }
+}
+
+function showLoginError(msg) {
+  document.getElementById('login-error').innerHTML = `<div class="alert alert-e" style="justify-content:center"><div>${msg}</div></div>`;
+}
+
+function doLogout() {
+  fetch(API + '/api/admin/logout', {method:'POST', headers:{Authorization:'Bearer '+authToken}}).catch(()=>{});
+  authToken = '';
+  localStorage.removeItem('cp_admin_token');
+  currentPage = 'dash';
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  window.location.reload();
+}
+
+// 回车登录
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('login-pass').focus(); });
+
+// ===== 初始化 =====
+function initAfterLogin() {
+  bindNav();
+  switchPage('dash');
+  if (autoTimer) clearInterval(autoTimer);
+  autoTimer = setInterval(() => {
+    if (currentPage === 'dash') loadDash(true);
+  }, 15000);
+}
+
+function bindNav() {
+  document.querySelectorAll('.nav-link').forEach(a => {
+    const newEl = a.cloneNode(true);
+    a.parentNode.replaceChild(newEl, a);
+  });
+  document.querySelectorAll('.nav-link').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const p = a.dataset.p;
+      if (p) switchPage(p);
+    });
+  });
+}
+
+function switchPage(p) {
+  if (!p) return;
+  document.querySelectorAll('.nav-link').forEach(a=>a.classList.remove('active'));
+  const navEl = document.querySelector(`.nav-link[data-p="${p}"]`);
+  if (navEl) navEl.classList.add('active');
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  const pg = document.getElementById(`pg-${p}`);
+  if (pg) pg.classList.add('active');
+  currentPage = p;
+  ({dash:loadDash, code:loadCode, sessions:loadSessions, tenants:loadTenants, config:loadConfig}[p]||loadDash)();
+}
+
+// ===== API =====
+async function api(url, opts={}) {
+  try {
+    const h = {'Content-Type':'application/json', ...opts.headers};
+    if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+    const r = await fetch(API + url, {headers:h, ...opts});
+    if (r.status === 401) {
+      doLogout();
+      throw new Error('登录已过期');
+    }
+    if (!r.ok) {
+      const e = await r.json().catch(()=>({}));
+      throw new Error(e.detail || r.statusText);
+    }
+    return await r.json();
+  } catch(e) {
+    if (currentPage !== 'dash' || !url.includes('stats')) toast(e.message, 'e');
+    throw e;
+  }
+}
+
+function toast(msg, type='s') {
+  const d = document.createElement('div');
+  d.className = `toast toast-${type}`;
+  d.textContent = msg;
+  document.getElementById('toasts').appendChild(d);
+  setTimeout(()=>d.remove(), 3000);
+}
+
+function esc(s) { const d=document.createElement('div'); d.textContent=s==null?'':String(s); return d.innerHTML; }
+
+// ===== 控制台 =====
+async function loadDash(silent=false) {
+  try {
+    const s = await api('/api/admin/stats');
+    const u = s.usage, a = s.active_session;
+    const dot = document.getElementById('status-dot');
+    dot.className = 'status-dot ' + (s.active ? 'on' : 'off');
+    document.getElementById('sidebar-status').textContent = s.active ? '使用中' : '空闲';
+
+    document.getElementById('dash-stats').innerHTML = `
+      <div class="stat">
+        <div class="stat-l">当前状态</div>
+        <div class="stat-v" style="color:${s.active?'var(--s)':'var(--muted)'}">${s.active?'使用中':'空闲'}</div>
+        <div class="stat-s">${a ? (esc(a.tenant_name)||'匿名顾客') : '无人使用'}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-l">今日会话</div>
+        <div class="stat-v">${s.today_count}</div>
+        <div class="stat-s">收入 ¥${s.today_revenue}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-l">月收入</div>
+        <div class="stat-v" style="color:${s.profit>=0?'var(--s)':'var(--d)'}">¥${s.month_revenue.toFixed(0)}</div>
+        <div class="stat-s">利润 ¥${s.profit.toFixed(0)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-l">月配额</div>
+        <div class="stat-v" style="color:${u.monthly.pct>80?'var(--d)':u.monthly.pct>60?'var(--w)':''}">${u.monthly.pct}%</div>
+        <div class="stat-s">${u.monthly.used} / ${u.monthly.limit}</div>
+      </div>
+    `;
+
+    document.getElementById('dash-active').innerHTML = `
+      <div class="card-head"><h3>当前会话</h3>${a ? `<button class="btn btn-d btn-xs" onclick="endActiveSession(${a.id})">强制结束</button>` : ''}</div>
+      ${a ? `
+        <div class="session-active-card">
+          <div class="title">● 使用中</div>
+          <div style="font-size:13px">租户: ${esc(a.tenant_name)||'匿名顾客'}</div>
+          <div style="font-size:12px;color:#065f46">激活码: <strong>${esc(a.activation_code)}</strong></div>
+          <div style="font-size:12px;color:#065f46">到期: ${esc(a.expires_at?.slice(11,16))}</div>
+          <div style="font-size:12px;color:#065f46">已调用: ${a.request_count||0} 次 · 费用 ¥${(a.total_cost||0).toFixed(2)}</div>
+        </div>
+      ` : `<div style="text-align:center;padding:24px;color:var(--muted)">空闲<br><button class="btn btn-p btn-sm" style="margin-top:8px" onclick="switchPage('code')">去生成激活码</button></div>`}
+    `;
+
+    document.getElementById('dash-usage').innerHTML = `
+      <div class="card-head"><h3>用量监控</h3></div>
+      ${['5h','weekly','monthly'].map(w => {
+        const d = u[w];
+        const label = w==='5h'?'每5小时':w==='weekly'?'本周':'本月';
+        const cls = d.pct>=90?'danger':d.pct>=70?'warn':'safe';
+        return `<div class="meter"><div class="meter-h"><span>${label}</span><span>${d.used}/${d.limit} (${d.pct}%)</span></div><div class="meter-t"><div class="meter-f ${cls}" style="width:${Math.min(d.pct,100)}%"></div></div></div>`;
+      }).join('')}
+      ${u.monthly.pct > 70 ? '<div class="alert alert-w" style="margin-top:8px"><div>月配额使用超过70%，建议控制租用频率</div></div>' : ''}
+    `;
+
+    // 最近5条会话
+    try {
+      const ss = await api('/api/admin/sessions?limit=5');
+      document.getElementById('dash-recent').innerHTML = `
+        <div class="card-head"><h3>最近租用</h3><a class="btn btn-o btn-xs" onclick="switchPage('sessions')">查看全部</a></div>
+        ${ss.length ? `<table><thead><tr><th>码</th><th>时长</th><th>请求</th><th>总额</th><th>状态</th><th>时间</th></tr></thead><tbody>
+          ${ss.map(s=>`<tr><td class="mono" style="font-weight:600">${esc(s.activation_code)}</td><td class="tr">${s.duration_minutes}分</td>
+            <td class="tr">${s.request_count||0}</td><td class="tr mono">¥${(s.total_cost||0).toFixed(2)}</td>
+            <td><span class="badge badge-${s.status==='active'?'s':s.status==='expired'?'d':'w'}">${s.status==='active'?'使用中':s.status==='expired'?'过期':'未激活'}</span></td>
+            <td style="font-size:11px">${esc(s.created_at?.slice(5,16))}</td></tr>`).join('')}</tbody></table>`
+          : '<p style="color:var(--muted);text-align:center;padding:16px">暂无记录</p>'}
+      `;
+    } catch(e) {}
+  } catch(e) {
+    if (!silent) toast('加载失败','e');
+  }
+}
+
+async function endActiveSession(id) {
+  if (!confirm('确定强制结束当前会话？')) return;
+  try {
+    await api('/api/admin/end-session', {method:'POST', body:JSON.stringify({session_id:id})});
+    toast('已结束','s');
+    loadDash();
+  } catch(e) {}
+}
+
+// ===== 生成激活码 =====
+function loadCode() {
+  document.getElementById('code-result').style.display = 'none';
+  document.getElementById('code-form').innerHTML = `
+    <div class="card-head"><h3>新建租用码</h3></div>
+    <div class="alert alert-i" style="margin-bottom:12px"><div>3元5小时 = 0.6元/小时。生成的激活码发给顾客，顾客在 <a href="/portal" target="_blank" style="color:var(--p)">自助页</a> 输入即可。一个码只能用一次。</div></div>
+    <label style="font-size:11px;color:var(--muted);margin-bottom:6px;display:block">快速选择时长</label>
+    <div class="quick-actions" id="quick-dur">
+      <div class="quick-btn" data-min="60" onclick="selectDur(this)"><div class="label">1小时</div><div class="val">¥0.60</div></div>
+      <div class="quick-btn" data-min="120" onclick="selectDur(this)"><div class="label">2小时</div><div class="val">¥1.20</div></div>
+      <div class="quick-btn active" data-min="300" onclick="selectDur(this)"><div class="label">5小时</div><div class="val">¥3.00</div></div>
+      <div class="quick-btn" data-min="480" onclick="selectDur(this)"><div class="label">8小时</div><div class="val">¥4.80</div></div>
+    </div>
+    <div class="form-row">
+      <div class="form"><label>自定义时长(分钟)</label><input id="c-custom" type="number" value="" placeholder="填入则覆盖上面选项" min="30" max="480"><div class="form-hint">30~480分钟</div></div>
+      <div class="form"><label>关联用户</label><select id="c-tenant"><option value="0">-- 匿名 --</option></select><div class="form-hint">可选</div></div>
+    </div>
+    <div class="form-row">
+      <div class="form"><label>时租单价 (¥/时)</label><input id="c-ph" type="number" value="0.6" step="0.1" min="0.1"></div>
+      <div class="form"><label>按次单价 (¥/次)</label><input id="c-pr" type="number" value="0.002" step="0.001" min="0"></div>
+    </div>
+    <div class="form"><label>备注</label><input id="c-notes" placeholder="可选"></div>
+    <button class="btn btn-p btn-block" style="margin-top:14px" onclick="createCode()">生成激活码</button>
+  `;
+  api('/api/admin/tenants').then(ts=>{
+    const sel = document.getElementById('c-tenant');
+    if (sel) ts.forEach(t=>{ if(t.status==='active') sel.innerHTML += `<option value="${t.id}">${esc(t.name)}</option>`; });
+  }).catch(()=>{});
+}
+
+function selectDur(el) {
+  document.querySelectorAll('#quick-dur .quick-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('c-custom').value = '';
+}
+
+async function createCode() {
+  const customVal = parseInt(document.getElementById('c-custom')?.value)||0;
+  const quickActive = document.querySelector('#quick-dur .quick-btn.active');
+  const quickMin = quickActive ? parseInt(quickActive.dataset.min) : 300;
+  const dur = customVal || quickMin;
+  const ph = parseFloat(document.getElementById('c-ph')?.value)||0.6;
+  const ppr = parseFloat(document.getElementById('c-pr')?.value)||0.002;
+  const tid = parseInt(document.getElementById('c-tenant')?.value)||0;
+  const notes = document.getElementById('c-notes')?.value||'';
+
+  if (dur < 30 || dur > 480) return toast('时长需在30~480分钟','e');
+
+  try {
+    const r = await api('/api/admin/create-code', {method:'POST', body:JSON.stringify({
+      duration_minutes:dur, price_per_hour:ph, price_per_request:ppr, tenant_id:tid, notes
+    })});
+    const card = document.getElementById('code-result');
+    card.style.display = 'block';
+    card.innerHTML = `
+      <div class="alert alert-s"><div>激活码生成成功！</div></div>
+      <div class="code-box">
+        <div style="font-size:11px;color:var(--muted)">激活码</div>
+        <div class="code" id="gen-code">${esc(r.activation_code)}</div>
+        <div class="info">${esc(r.duration_display)} · 基础 ¥${r.base_cost} · 预估 ¥${r.est_total}</div>
+      </div>
+      <label style="font-size:11px;color:var(--muted);margin-bottom:4px;display:block">发给顾客的信息</label>
+      <div class="copy-highlight"><span class="txt" id="share-text">${esc(r.share_text)}</span><button class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;flex-shrink:0" onclick="copyTextById('share-text')">复制</button></div>
+      <div class="alert alert-i" style="margin-top:10px"><div>顾客访问 <a href="/portal" target="_blank" style="color:var(--p)">自助页</a> 输入 <strong>${esc(r.activation_code)}</strong> 即可激活。</div></div>
+      <button class="btn btn-o btn-block" style="margin-top:10px" onclick="loadCode()">再生成一个</button>
+    `;
+    toast('激活码: ' + r.activation_code, 's');
+  } catch(e) {}
+}
+
+// ===== 租用记录 =====
+async function loadSessions() {
+  try {
+    const ss = await api('/api/admin/sessions?limit=200');
+    document.getElementById('sessions-table').innerHTML = `
+      <div class="card-head"><h3>全部记录</h3><span style="font-size:11px;color:var(--muted)">${ss.length} 条</span></div>
+      ${ss.length ? `<div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>激活码</th><th>用户</th><th>时长</th><th>请求</th><th>基础费</th><th>按次费</th><th>总额</th><th>状态</th><th>创建时间</th></tr></thead><tbody>
+      ${ss.map(s=>`<tr><td class="mono">#${s.id}</td><td class="mono" style="font-weight:600">${esc(s.activation_code)}</td>
+        <td>${esc(s.tenant_name)||'匿名'}</td><td class="tr">${s.duration_minutes}分</td>
+        <td class="tr">${s.request_count||0}</td><td class="tr mono">¥${s.base_cost}</td>
+        <td class="tr mono">¥${(s.usage_cost||0).toFixed(4)}</td>
+        <td class="tr mono" style="font-weight:600">¥${(s.total_cost||0).toFixed(2)}</td>
+        <td><span class="badge badge-${s.status==='active'?'s':s.status==='expired'?'d':'w'}">${s.status==='active'?'使用中':s.status==='expired'?'过期':'未激活'}</span></td>
+        <td style="font-size:11px">${esc(s.created_at?.slice(5,16))}</td></tr>`).join('')}</tbody></table></div>`
+        : '<p style="color:var(--muted);text-align:center;padding:30px">暂无记录</p>'}
+    `;
+  } catch(e) {}
+}
+
+// ===== 用户 =====
+async function loadTenants() {
+  try {
+    const ts = await api('/api/admin/tenants');
+    document.getElementById('tenants-table').innerHTML = ts.length ? `
+      <div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>名称</th><th>联系</th><th>总消费</th><th>总时长</th><th>状态</th><th>操作</th></tr></thead><tbody>
+      ${ts.map(t=>`<tr><td class="mono">#${t.id}</td><td><strong>${esc(t.name)}</strong></td><td>${esc(t.contact)||'-'}</td>
+        <td class="tr mono">¥${(t.total_spent||0).toFixed(2)}</td>
+        <td class="tr">${((t.total_hours||0)/1).toFixed(1)}h</td>
+        <td><span class="badge badge-${t.status==='active'?'s':'d'}">${t.status==='active'?'正常':'停用'}</span></td>
+        <td><button class="btn btn-o btn-xs" onclick="toggleTenant(${t.id})">${t.status==='active'?'停用':'启用'}</button></td></tr>`).join('')}</tbody></table></div>
+      ` : '<p style="color:var(--muted);text-align:center;padding:30px">暂无用户。用户是可选的，用来统计消费。</p>';
+  } catch(e) {}
+}
+
+function showAddTenant() {
+  document.getElementById('modals').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+      <h3>添加用户</h3>
+      <div class="form"><label>名称</label><input id="nt-name" placeholder="如：张三"></div>
+      <div class="form"><label>联系方式</label><input id="nt-contact" placeholder="微信/手机 (可选)"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-o" onclick="closeModal()">取消</button>
+        <button class="btn btn-p" onclick="addTenant()">确认</button>
+      </div>
+    </div></div>`;
+  document.getElementById('nt-name').focus();
+}
+
+function closeModal() { document.getElementById('modals').innerHTML=''; }
+
+async function addTenant() {
+  const n = document.getElementById('nt-name')?.value.trim();
+  if (!n) return toast('请输入名称','e');
+  try {
+    await api('/api/admin/tenants', {method:'POST', body:JSON.stringify({name:n, contact:document.getElementById('nt-contact')?.value||''})});
+    closeModal(); toast('已添加','s'); loadTenants();
+  } catch(e) {}
+}
+
+async function toggleTenant(id) {
+  try { await api(`/api/admin/tenants/${id}/toggle`, {method:'POST'}); loadTenants(); } catch(e) {}
+}
+
+// ===== 设置 =====
+async function loadConfig() {
+  try {
+    const c = await api('/api/admin/plan');
+    const providers = await api('/api/admin/providers');
+    const activeProviders = providers.filter(p => p.status === 'active');
+    const hasKey = activeProviders.some(p => p.api_key);
+
+    let providersHtml = `
+      <div class="card-head"><h3>API 供应商 ${activeProviders.length > 0 ? `<span class="badge badge-s" style="margin-left:6px">${activeProviders.length} 个</span>` : '<span class="badge badge-d" style="margin-left:6px">未配置</span>'}</h3>
+        <button class="btn btn-p btn-sm" onclick="showAddProvider()">+ 添加供应商</button>
+      </div>
+      ${activeProviders.length === 0 ? '<div class="alert alert-w"><div>尚未配置任何 API 供应商，顾客激活后无法调用 API！请先添加。</div></div>' : ''}
+    `;
+
+    for (const p of providers) {
+      const models = typeof p.models === 'string' ? JSON.parse(p.models || '[]') : (p.models || []);
+      const modelCount = models.length;
+      providersHtml += `
+        <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0;${p.status==='suspended'?'opacity:0.5':''}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div>
+              <strong>${esc(p.name)}</strong>
+              ${p.is_default ? '<span class="badge badge-i" style="margin-left:6px">默认</span>' : ''}
+              ${p.status === 'suspended' ? '<span class="badge badge-d" style="margin-left:6px">停用</span>' : ''}
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-o btn-xs" onclick="showEditProvider(${p.id})">编辑</button>
+              ${p.is_default ? '' : `<button class="btn btn-d btn-xs" onclick="deleteProvider(${p.id})">删除</button>`}
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">
+            <span class="mono">${esc(p.base_url)}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
+            Key: <span class="mono">${esc(p.api_key_masked || '****')}</span> · ${modelCount} 个模型
+          </div>
+          ${modelCount > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${models.map(m => `<span class="badge badge-i" style="font-size:10px">${esc(m.id)}</span>`).join('')}
+          </div>` : ''}
+        </div>
+      `;
+    }
+
+    document.getElementById('config-form').innerHTML = `
+      ${providersHtml}
+
+      <div class="card-head" style="margin-top:16px"><h3>基础设置</h3></div>
+      <div class="form"><label>公网域名/IP</label><input id="cf-domain" type="text" value="${esc(c.public_domain)||''}" placeholder="例: 1.14.105.111"><div class="form-hint">顾客端显示的 API 地址</div></div>
+
+      <div class="card-head" style="margin-top:16px"><h3>定价</h3></div>
+      <div class="form-row"><div class="form"><label>套餐月费 (¥)</label><input id="cf-cost" type="number" value="${c.monthly_cost}" step="0.01"></div>
+      <div class="form"><label>时租单价 (¥/时)</label><input id="cf-ph" type="number" value="${c.price_per_hour}" step="0.01"></div></div>
+      <div class="form-row"><div class="form"><label>按次单价 (¥/次)</label><input id="cf-pr" type="number" value="${c.price_per_request}" step="0.0001"></div>
+      <div class="form"><label>冷却期 (分钟)</label><input id="cf-cooldown" type="number" value="${c.cooldown_minutes}"><div class="form-hint">两用户间最小间隔</div></div></div>
+
+      <div class="card-head" style="margin-top:16px"><h3>安全规则</h3></div>
+      <div class="form-row"><div class="form"><label>最短租用 (分钟)</label><input id="cf-min" type="number" value="${c.min_minutes}"></div>
+      <div class="form"><label>最长租用 (小时)</label><input id="cf-max" type="number" value="${c.max_hours}"></div></div>
+      <div class="form"><label>安全余量 (%)</label><input id="cf-safety" type="number" value="${c.safety_pct}" min="0" max="50"><div class="form-hint">保留此比例不分配，防止触发限流</div></div>
+      <button class="btn btn-p btn-block" style="margin-top:14px" onclick="saveConfig()">保存基础设置</button>
+    `;
+  } catch(e) {}
+}
+
+async function saveConfig() {
+  try {
+    await api('/api/admin/plan', {method:'PUT', body:JSON.stringify({
+      public_domain: document.getElementById('cf-domain')?.value||'',
+      monthly_cost: parseFloat(document.getElementById('cf-cost')?.value),
+      price_per_hour: parseFloat(document.getElementById('cf-ph')?.value),
+      price_per_request: parseFloat(document.getElementById('cf-pr')?.value),
+      cooldown_minutes: parseInt(document.getElementById('cf-cooldown')?.value),
+      min_minutes: parseInt(document.getElementById('cf-min')?.value),
+      max_hours: parseInt(document.getElementById('cf-max')?.value),
+      safety_pct: parseFloat(document.getElementById('cf-safety')?.value),
+    })});
+    toast('已保存','s');
+    loadConfig();
+  } catch(e) {}
+}
+
+// ===== 供应商弹窗 =====
+function showAddProvider() {
+  document.getElementById('modals').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+      <h3>添加 API 供应商</h3>
+      <div class="alert alert-i"><div>常见供应商:<br>腾讯云: https://api.lkeap.cloud.tencent.com/coding/v3<br>OpenAI: https://api.openai.com/v1<br>DeepSeek: https://api.deepseek.com/v1<br>通义千问: https://dashscope.aliyuncs.com/compatible-mode/v1</div></div>
+      <div class="form"><label>名称</label><input id="pv-name" placeholder="如: OpenAI / DeepSeek"></div>
+      <div class="form"><label>Base URL</label><input id="pv-url" placeholder="https://api.openai.com/v1"></div>
+      <div class="form"><label>API Key</label><input id="pv-key" type="password" placeholder="sk-xxxx..."></div>
+      <div class="form"><label>模型列表 (每行一个: id|显示名|描述)</label>
+        <textarea id="pv-models" rows="5" placeholder="gpt-4o|GPT-4o|OpenAI旗舰模型&#10;gpt-4o-mini|GPT-4o Mini|快速轻量模型" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace"></textarea>
+        <div class="form-hint">格式: model_id|显示名|描述 (描述可省略)</div>
+      </div>
+      <div class="form"><label><input type="checkbox" id="pv-default"> 设为默认供应商 (未知模型路由到此)</label></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-o" onclick="closeModal()">取消</button>
+        <button class="btn btn-p" onclick="addProvider()">确认添加</button>
+      </div>
+    </div></div>`;
+  document.getElementById('pv-name').focus();
+}
+
+function showEditProvider(id) {
+  api('/api/admin/providers').then(providers => {
+    const p = providers.find(x => x.id === id);
+    if (!p) return;
+    const models = typeof p.models === 'string' ? JSON.parse(p.models || '[]') : (p.models || []);
+    const modelsText = models.map(m => `${m.id}|${m.name||''}|${m.desc||''}`).join('\n');
+    document.getElementById('modals').innerHTML = `
+      <div class="modal-overlay" onclick="closeModal()"><div class="modal" onclick="event.stopPropagation()">
+        <h3>编辑供应商</h3>
+        <div class="form"><label>名称</label><input id="pv-name" value="${esc(p.name)}"></div>
+        <div class="form"><label>Base URL</label><input id="pv-url" value="${esc(p.base_url)}"></div>
+        <div class="form"><label>API Key (留空则不修改)</label><input id="pv-key" type="password" placeholder="••••••••"></div>
+        <div class="form"><label>模型列表</label>
+          <textarea id="pv-models" rows="5" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:monospace">${esc(modelsText)}</textarea>
+        </div>
+        <div class="form"><label><input type="checkbox" id="pv-default" ${p.is_default?'checked':''}> 设为默认供应商</label></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-o" onclick="closeModal()">取消</button>
+          <button class="btn btn-p" onclick="editProvider(${id})">保存</button>
+        </div>
+      </div></div>`;
+  });
+}
+
+function parseModels() {
+  const text = document.getElementById('pv-models')?.value || '';
+  return text.trim().split('\n').filter(l => l.trim()).map(line => {
+    const parts = line.split('|');
+    return {id: parts[0].trim(), name: (parts[1]||parts[0]).trim(), desc: (parts[2]||'').trim()};
+  });
+}
+
+async function addProvider() {
+  const name = document.getElementById('pv-name')?.value.trim();
+  const url = document.getElementById('pv-url')?.value.trim();
+  if (!name || !url) return toast('请填写名称和URL','e');
+  try {
+    await api('/api/admin/providers', {method:'POST', body:JSON.stringify({
+      name, base_url:url,
+      api_key: document.getElementById('pv-key')?.value||'',
+      models: parseModels(),
+      is_default: document.getElementById('pv-default')?.checked || false,
+    })});
+    closeModal(); toast('已添加','s'); loadConfig();
+  } catch(e) {}
+}
+
+async function editProvider(id) {
+  const body = {
+    name: document.getElementById('pv-name')?.value.trim(),
+    base_url: document.getElementById('pv-url')?.value.trim(),
+    models: parseModels(),
+    is_default: document.getElementById('pv-default')?.checked || false,
+  };
+  const key = document.getElementById('pv-key')?.value;
+  if (key) body.api_key = key;
+  try {
+    await api(`/api/admin/providers/${id}`, {method:'PUT', body:JSON.stringify(body)});
+    closeModal(); toast('已保存','s'); loadConfig();
+  } catch(e) {}
+}
+
+async function deleteProvider(id) {
+  if (!confirm('确定删除此供应商？')) return;
+  try {
+    await api(`/api/admin/providers/${id}`, {method:'DELETE'});
+    toast('已删除','s'); loadConfig();
+  } catch(e) {}
+}
+
+function copyTextById(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const text = el.textContent;
+  navigator.clipboard.writeText(text).then(()=>toast('已复制','s')).catch(()=>{
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    toast('已复制','s');
+  });
+}
+
+// ===== 启动 =====
+document.addEventListener('DOMContentLoaded', () => {
+  if (checkLogin()) initAfterLogin();
+});
+</script>
+</body>
+</html>
